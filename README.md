@@ -109,7 +109,14 @@ cd gold4cast
 python -m pip install -r requirements.txt
 ```
 
-Then configure a lawful data source and run the forecast pipeline.
+Then provide a lawful normalized CSV and run the forecast pipeline:
+
+```bash
+export GOLD4CAST_DATA=/path/to/market_data.csv
+python forecast_xgboost_live.py
+```
+
+See [Data input](docs/DATA.md).
 
 For the maintainer's Termux workflow, the project may also expose:
 
@@ -166,4 +173,4 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 ## Version
 
-**Gold4Cast v1.0.0**
+**Gold4Cast v1.0.1**

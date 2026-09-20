@@ -1,16 +1,18 @@
-name: Gold18 Live XGBoost Forecast
+name: Gold4Cast Forecast
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   forecast:
-    name: Live Gold18 forecast
+    name: Run Gold4Cast forecast
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      GOLD4CAST_DATA: market_data.csv
 
     steps:
       - uses: actions/checkout@v4
@@ -22,35 +24,33 @@ jobs:
       - name: Install forecasting stack
         run: |
           python -m pip install -U pip
-          python -m pip install 'xgboost>=3.2,<4' numpy pandas requests
+          python -m pip install -r requirements.txt
 
-      - name: Fetch latest data and forecast
+      - name: Obtain user-authorized market data
+        env:
+          GOLD4CAST_DATA_URL: ${{ secrets.GOLD4CAST_DATA_URL }}
+        run: |
+          if [ -z "$GOLD4CAST_DATA_URL" ]; then
+            echo "Set repository secret GOLD4CAST_DATA_URL to a lawful normalized CSV source."
+            echo "Required columns: date,gold18_toman,usd_irr,xau_usd"
+            exit 1
+          fi
+          curl --fail --location --silent --show-error             "$GOLD4CAST_DATA_URL"             --output "$GOLD4CAST_DATA"
+
+      - name: Forecast
         env:
           OMP_NUM_THREADS: '4'
         run: python forecast_xgboost_live.py
 
-      - name: Update permanent scorecard
+      - name: Update scorecard in this run
         run: python scorecard_update.py
-
-      - name: Save forecast history permanently
-        run: |
-          git config user.name "Gold4Cast Bot"
-          git config user.email "gold4cast-bot@users.noreply.github.com"
-          git add forecast_history.csv forecast_evaluations.csv
-          if git diff --cached --quiet; then
-            echo "No new history changes."
-          else
-            git commit -m "Update Gold4Cast forecast history"
-            git push
-          fi
 
       - name: Upload forecast
         uses: actions/upload-artifact@v4
         with:
-          name: gold18-live-forecast
+          name: gold4cast-forecast
           path: |
             latest_xgboost_forecast.csv
             gold18_forecast_report.html
             forecast_history.csv
             forecast_evaluations.csv
-          retention-days: 30

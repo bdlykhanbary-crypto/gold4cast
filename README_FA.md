@@ -110,7 +110,14 @@ cd gold4cast
 python -m pip install -r requirements.txt
 ```
 
-سپس یک منبع داده مجاز را پیکربندی و pipeline پیش‌بینی را اجرا کنید.
+سپس مسیر یک CSV مجاز را مشخص و پیش‌بینی را اجرا کنید:
+
+```bash
+export GOLD4CAST_DATA=/path/to/market_data.csv
+python forecast_xgboost_live.py
+```
+
+جزئیات: [ورودی داده](docs/DATA_FA.md).
 
 برای workflow شخصی نگهدارنده در Termux ممکن است دستور زیر فعال باشد:
 
@@ -139,4 +146,4 @@ Apache License 2.0. فایل [LICENSE](LICENSE) را ببینید.
 
 ## نسخه
 
-**Gold4Cast v1.0.0**
+**Gold4Cast v1.0.1**

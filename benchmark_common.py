@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import requests
 
 HORIZONS = {63: "3M", 126: "6M", 252: "12M"}
 MAX_H = 252
@@ -17,163 +17,85 @@ XGB_LAGS = 63
 QUANTILES = [0.1, 0.5, 0.9]
 
 ROOT = Path(__file__).resolve().parent
-DATA_PATH = ROOT / "data" / "gold18_ohlc.csv"
-TGJU_URL = "https://api.tgju.org/v1/market/indicator/summary-table-data/{slug}"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json, text/javascript, */*; q=0.01",
-    "Origin": "https://www.tgju.org",
-    "Referer": "https://www.tgju.org/",
-}
-PERSIAN_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
-ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+DATA_PATH = ROOT / "market_data.csv"
+
+REQUIRED_MARKET_COLUMNS = ("date", "gold18_toman", "usd_irr", "xau_usd")
 
 
-def normalize_digits(s):
-    return str(s).translate(PERSIAN_DIGITS).translate(ARABIC_DIGITS)
-
-
-def strip_html(x):
-    return re.sub(r"<.*?>", "", str(x)).strip() if x is not None else ""
-
-
-def to_num(x):
-    s = normalize_digits(strip_html(x)).replace(",", "").replace("٬", "").replace("−", "-")
-    s = re.sub(r"[^0-9.\-]", "", s)
-    try:
-        return float(s)
-    except Exception:
-        return np.nan
-
-
-def tgju_params(n=5000, n_columns=8):
-    p = [("lang", "fa"), ("order_dir", "asc"), ("draw", "2")]
-    for i in range(n_columns):
-        p += [
-            (f"columns[{i}][data]", str(i)),
-            (f"columns[{i}][name]", ""),
-            (f"columns[{i}][searchable]", "true"),
-            (f"columns[{i}][orderable]", "true"),
-            (f"columns[{i}][search][value]", ""),
-            (f"columns[{i}][search][regex]", "false"),
-        ]
-    p += [
-        ("start", "0"),
-        ("length", str(n)),
-        ("search", ""),
-        ("order_col", ""),
-        ("order_dir", ""),
-        ("from", ""),
-        ("to", ""),
-        ("convert_to_ad", "1"),
-        ("_", str(int(time.time() * 1000))),
-    ]
-    return p
-
-
-def fetch_tgju_ohlc(slug: str) -> pd.DataFrame:
-    r = requests.get(
-        TGJU_URL.format(slug=slug),
-        params=tgju_params(),
-        headers=HEADERS,
-        timeout=35,
-    )
-    r.raise_for_status()
-    payload = r.json()
-    rows = payload.get("data", [])
-    if not rows:
-        raise RuntimeError(f"TGJU returned no rows for {slug}")
-    df = pd.DataFrame(
-        [x[:8] for x in rows],
-        columns=[
-            "open", "low", "high", "close",
-            "change_amount", "change_percent", "gregorian_date", "jalali_date",
-        ],
-    )
-    for c in ["open", "low", "high", "close"]:
-        df[c] = df[c].map(to_num)
-    df["date"] = pd.to_datetime(
-        df["gregorian_date"].map(lambda x: normalize_digits(strip_html(x))), errors="coerce"
-    )
-    return (
-        df.dropna(subset=["date", "close"])
-        .sort_values("date")
-        .drop_duplicates("date")
-        .reset_index(drop=True)[["date", "open", "low", "high", "close"]]
-    )
+def _resolve_market_data_path() -> Path:
+    configured = os.environ.get("GOLD4CAST_DATA", "").strip()
+    path = Path(configured).expanduser() if configured else DATA_PATH
+    if not path.is_absolute():
+        path = (Path.cwd() / path).resolve()
+    return path
 
 
 def load_market_data(refresh=True):
-    """Load Gold18 target + USD/IRR + XAUUSD past-only covariates.
+    # Public Gold4Cast uses a provider-agnostic normalized CSV.
+    # Required columns: date,gold18_toman,usd_irr,xau_usd
+    # refresh is retained for API compatibility.
+    path = _resolve_market_data_path()
+    if not path.exists():
+        raise FileNotFoundError(
+            "Market data not found. Set GOLD4CAST_DATA to a normalized CSV "
+            "containing: date,gold18_toman,usd_irr,xau_usd"
+        )
 
-    Alignment is causal: for each gold observation date, merge_asof(direction='backward')
-    uses only the latest USD/XAU close known on or before that date. No future covariates
-    are used anywhere in the benchmark.
-    """
-    local = pd.read_csv(DATA_PATH)
-    local["date"] = pd.to_datetime(local["date"])
-    local = local[["date", "open", "low", "high", "close"]].copy()
+    raw = pd.read_csv(path)
+    missing = [c for c in REQUIRED_MARKET_COLUMNS if c not in raw.columns]
+    if missing:
+        raise ValueError(
+            "Missing required market-data columns: " + ", ".join(missing)
+        )
 
-    source = {"gold": "bundled verified history", "usd": None, "xau": None}
-    notes = []
+    market = raw.loc[:, list(REQUIRED_MARKET_COLUMNS)].copy()
+    market["date"] = pd.to_datetime(market["date"], errors="coerce")
 
-    if refresh:
-        try:
-            live = fetch_tgju_ohlc("geram18")
-            if len(live) >= int(0.95 * len(local)) and live["date"].max() >= local["date"].max():
-                local = live
-                source["gold"] = "TGJU live geram18"
-            else:
-                notes.append(
-                    f"gold live response rejected: rows={len(live)}, last={live['date'].max()}"
-                )
-        except Exception as e:
-            notes.append(f"gold refresh failed: {type(e).__name__}: {e}")
+    for col in ("gold18_toman", "usd_irr", "xau_usd"):
+        market[col] = pd.to_numeric(market[col], errors="coerce")
 
-    # For the multivariate benchmark factors are mandatory. We do not silently fall back
-    # to a gold-only run, because that would invalidate the comparison requested by the user.
-    usd = fetch_tgju_ohlc("price_dollar_rl")
-    xau = fetch_tgju_ohlc("ons")
-    source["usd"] = "TGJU price_dollar_rl"
-    source["xau"] = "TGJU ons"
-
-    gold = local.sort_values("date").drop_duplicates("date").reset_index(drop=True)
-    gold = gold[["date", "close"]].rename(columns={"close": "gold_close_irr"})
-    usd = usd[["date", "close"]].rename(columns={"close": "usd_close_irr"})
-    xau = xau[["date", "close"]].rename(columns={"close": "xau_close_usd"})
-
-    aligned = pd.merge_asof(
-        gold.sort_values("date"), usd.sort_values("date"), on="date", direction="backward"
+    market = (
+        market.dropna(subset=list(REQUIRED_MARKET_COLUMNS))
+        .sort_values("date")
+        .drop_duplicates("date", keep="last")
+        .reset_index(drop=True)
     )
-    aligned = pd.merge_asof(
-        aligned.sort_values("date"), xau.sort_values("date"), on="date", direction="backward"
-    )
-    aligned = aligned.dropna(subset=["gold_close_irr", "usd_close_irr", "xau_close_usd"])
-    aligned = aligned[(aligned[["gold_close_irr", "usd_close_irr", "xau_close_usd"]] > 0).all(axis=1)]
-    aligned = aligned.reset_index(drop=True)
 
-    aligned["price_toman"] = aligned["gold_close_irr"].astype(float) / 10.0
-    aligned["log_gold"] = np.log(aligned["price_toman"])
-    aligned["log_usd"] = np.log(aligned["usd_close_irr"].astype(float))
-    aligned["log_xau"] = np.log(aligned["xau_close_usd"].astype(float))
-    # Compatibility with existing scoring helpers.
-    aligned["log_price"] = aligned["log_gold"]
+    if market.empty:
+        raise ValueError("Normalized market dataset contains no valid rows.")
+
+    positive_cols = ["gold18_toman", "usd_irr", "xau_usd"]
+    market = market[(market[positive_cols] > 0).all(axis=1)].reset_index(drop=True)
+    if market.empty:
+        raise ValueError("Market prices must be positive.")
+
+    market["price_toman"] = market["gold18_toman"].astype(float)
+    market["gold_close_irr"] = market["price_toman"] * 10.0
+    market["usd_close_irr"] = market["usd_irr"].astype(float)
+    market["xau_close_usd"] = market["xau_usd"].astype(float)
+
+    market["log_gold"] = np.log(market["price_toman"])
+    market["log_usd"] = np.log(market["usd_close_irr"])
+    market["log_xau"] = np.log(market["xau_close_usd"])
+    market["log_price"] = market["log_gold"]
 
     meta = {
-        "source": source,
-        "notes": notes,
-        "gold_rows_raw": int(len(gold)),
-        "usd_rows_raw": int(len(usd)),
-        "xau_rows_raw": int(len(xau)),
-        "aligned_rows": int(len(aligned)),
-        "aligned_from": str(aligned.date.min().date()),
-        "aligned_to": str(aligned.date.max().date()),
-        "usd_last_raw": str(usd.date.max().date()),
-        "xau_last_raw": str(xau.date.max().date()),
-        "alignment": "gold calendar; backward as-of join for USD/XAU (causal)",
-        "inputs": ["Gold18 log price target", "USD/IRR log close past covariate", "XAU/USD log close past covariate"],
+        "source": {"market_csv": str(path)},
+        "notes": [
+            "Provider-agnostic public loader; user is responsible for lawful data access.",
+            "Input rows are sorted by date and duplicate dates keep the last observation.",
+        ],
+        "aligned_rows": int(len(market)),
+        "aligned_from": str(market.date.min().date()),
+        "aligned_to": str(market.date.max().date()),
+        "alignment": "user-supplied normalized common calendar",
+        "inputs": [
+            "Gold18 price in toman",
+            "USD/IRR",
+            "XAU/USD",
+        ],
     }
-    return aligned, meta
+    return market, meta
 
 
 def benchmark_origins(n: int):
