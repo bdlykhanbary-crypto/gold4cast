@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2]
+- Added bilingual model-selection history documenting TimesFM-3, Chronos-2, Moirai-2.0 and XGBoost benchmarks.
+- Added contribution guidance to prevent duplicate model proposals.
+- Added repository governance setup for pull-request-based changes.
+- Added v1.1 bilingual roadmap issues for public collaboration.
+
 ## [1.0.1]
 - Removed hard-coded third-party market-data provider coupling from the public loader.
 - Added provider-agnostic normalized CSV input through `GOLD4CAST_DATA`.

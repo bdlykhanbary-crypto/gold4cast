@@ -45,3 +45,7 @@ Keep modeling logic explicit and auditable. Avoid adding an ensemble, indicator,
 ## Security and data
 
 Never commit API keys, private tokens, credentials, private datasets, or user-specific account information.
+
+## Model proposals
+
+Before proposing a forecasting-model replacement, read [Model Selection History](docs/MODEL_SELECTION.md). Do not open a duplicate proposal for TimesFM-3, Chronos-2, or Moirai-2.0 unless there is a materially new version, capability, setup, or reproducible evidence.

@@ -152,6 +152,10 @@ gold4cast
 └── LICENSE
 ```
 
+## Model-selection history
+
+Before proposing a replacement forecasting model, read [Model Selection History](docs/MODEL_SELECTION.md). It documents the existing TimesFM-3, Chronos-2, Moirai-2.0, and XGBoost benchmarks and the evidence required for a new model proposal.
+
 ## Contributing
 
 Professional and research contributions are welcome. Please read:
@@ -173,4 +177,4 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 ## Version
 
-**Gold4Cast v1.0.1**
+**Gold4Cast v1.0.2**

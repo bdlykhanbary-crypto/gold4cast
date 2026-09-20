@@ -125,6 +125,10 @@ python forecast_xgboost_live.py
 gold4cast
 ```
 
+## تاریخچه انتخاب مدل
+
+قبل از پیشنهاد جایگزینی مدل، [تاریخچه انتخاب مدل](docs/MODEL_SELECTION_FA.md) را بخوانید. در این سند تست‌های TimesFM-3، Chronos-2، Moirai-2.0 و XGBoost و شرایط لازم برای پیشنهاد مدل جدید ثبت شده است.
+
 ## مشارکت در توسعه
 
 برای توسعه حرفه‌ای پروژه:
@@ -146,4 +150,4 @@ Apache License 2.0. فایل [LICENSE](LICENSE) را ببینید.
 
 ## نسخه
 
-**Gold4Cast v1.0.1**
+**Gold4Cast v1.0.2**
