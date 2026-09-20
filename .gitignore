@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+secrets.*
+credentials.*
+
+# Raw/proprietary data
+data/
+*.parquet
+*.feather
+
+# Runtime outputs
+outputs/
+result-*/
+final_results*/
+gold18-*-results/
+*.html
+latest_xgboost_forecast.csv
+
+# Local live history (public releases should not publish user-specific history)
+forecast_history.csv
+forecast_evaluations.csv
+
+# Backups
+*.backup_*
+backup_*/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

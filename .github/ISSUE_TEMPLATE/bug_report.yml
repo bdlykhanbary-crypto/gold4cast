@@ -1,0 +1,24 @@
+name: "Bug report / گزارش خطا"
+description: "Report a reproducible problem / گزارش یک مشکل قابل بازتولید"
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / مشکل"
+      description: "Describe what happened. / توضیح دهید چه اتفاقی افتاد."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: "Reproduction / روش بازتولید"
+      description: "Exact steps and commands. / مراحل و دستورهای دقیق."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / لاگ"
+      render: shell

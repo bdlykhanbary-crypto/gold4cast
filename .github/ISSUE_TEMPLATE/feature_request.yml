@@ -1,0 +1,17 @@
+name: "Feature request / پیشنهاد قابلیت"
+description: "Suggest an improvement / پیشنهاد توسعه"
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: "Goal / هدف"
+      description: "What problem should this solve? / این تغییر چه مشکلی را حل می‌کند؟"
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: "Validation plan / روش اعتبارسنجی"
+      description: "If forecasting behavior changes, explain how it should be benchmarked. / اگر رفتار مدل تغییر می‌کند روش بک‌تست را توضیح دهید."
