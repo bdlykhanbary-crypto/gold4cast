@@ -75,6 +75,10 @@ HAC-adjusted two-sided p-values for XGBoost vs Chronos-2:
 
 These results are historical validation, not a guarantee of future performance. See [Validation](docs/VALIDATION.md).
 
+## Live market snapshot
+
+Live reports can use a separate provider-agnostic current snapshot so yesterday's daily close is not silently treated as today's current price. In strict live mode, stale or missing snapshots stop the run. The HTML also shows the exact live Gold18, USD/IRR and XAU/USD inputs and optional quote times. See [Live snapshot input](docs/LIVE_DATA.md).
+
 ## Live scorecard
 
 Every live forecast can be stored permanently. When a forecast matures after 63, 126, or 252 trading sessions, Gold4Cast can compare the original forecast with the realized market price and report:
@@ -177,4 +181,4 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 ## Version
 
-**Gold4Cast v1.0.2**
+**Gold4Cast v1.0.3**
