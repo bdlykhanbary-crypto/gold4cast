@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3]
+- Added provider-agnostic current-market snapshot overlay.
+- Added strict stale-snapshot protection for live forecasts.
+- Added exact live Gold18, USD/IRR and XAU/USD values to the HTML report.
+- Added optional quote-time display for each live input.
+- Added bilingual live-data documentation.
+- Updated the public GitHub Actions workflow to require an authorized live-snapshot source.
+
 ## [1.0.2]
 - Added bilingual model-selection history documenting TimesFM-3, Chronos-2, Moirai-2.0 and XGBoost benchmarks.
 - Added contribution guidance to prevent duplicate model proposals.

@@ -1,9 +1,11 @@
 from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 
 from benchmark_common import HORIZONS, load_market_data
 from run_model import load_xgboost, forecast_xgb
+from live_snapshot import overlay_live_snapshot
 
 
 def fa_num(s):
@@ -139,12 +141,43 @@ def jalali_date_string(gregorian_iso):
 
 
 market, meta = load_market_data(refresh=True)
+require_live = os.environ.get("GOLD4CAST_REQUIRE_LIVE", "0").strip() == "1"
+market, meta = overlay_live_snapshot(market, meta, require_live=require_live)
 load_xgboost()
 
 origin = len(market)
 current = float(market.price_toman.iloc[-1])
 data_date = str(market.date.iloc[-1].date())
 jalali_date = jalali_date_string(data_date)
+
+live_snapshot = meta.get("live_snapshot") or {}
+gold_quote_time = live_snapshot.get("gold_quote_time") or "نامشخص"
+usd_quote_time = live_snapshot.get("usd_quote_time") or "نامشخص"
+xau_quote_time = live_snapshot.get("xau_quote_time") or "نامشخص"
+
+live_gold = live_snapshot.get("gold18_toman")
+live_usd = live_snapshot.get("usd_irr")
+live_xau = live_snapshot.get("xau_usd")
+
+if live_snapshot:
+    live_box = (
+        '<div class="live-box">'
+        '<b>ورودی‌های لحظه‌ای همین اجرای مدل</b><br>'
+        f'طلای ۱۸ عیار: {fmt_toman(live_gold)} <span>· ساعت {fa_num(gold_quote_time)}</span><br>'
+        f'دلار: {fa_num(f"{float(live_usd):,.0f}")} ریال <span>· ساعت {fa_num(usd_quote_time)}</span><br>'
+        f'اونس جهانی: {fa_num(f"{float(live_xau):,.2f}")} دلار <span>· ساعت {fa_num(xau_quote_time)}</span>'
+        '</div>'
+    )
+    current_label = "قیمت لحظه‌ای مورد استفاده مدل"
+    data_label = "تاریخ داده لحظه‌ای مورد استفاده مدل"
+else:
+    live_box = (
+        '<div class="live-box muted">'
+        'Snapshot لحظه‌ای برای این اجرا ارائه نشده است؛ گزارش بر اساس آخرین ردیف دیتاست تاریخی ساخته شده.'
+        '</div>'
+    )
+    current_label = "آخرین قیمت موجود در داده"
+    data_label = "آخرین روز داده‌ای که مدل دیده است"
 
 rows = []
 for h, label in HORIZONS.items():
@@ -200,7 +233,7 @@ for _, r in df.iterrows():
 html = f'''<!doctype html>
 <html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پیش‌بینی طلای ۱۸ عیار</title>
 <style>
-*{{box-sizing:border-box}}body{{margin:0;background:#f3f3f3;color:#171717;font-family:Tahoma,Arial,sans-serif;line-height:1.8}}.wrap{{max-width:780px;margin:auto;padding:14px}}.hero{{background:#111;color:#fff;border-radius:22px;padding:22px;margin-bottom:14px}}.hero .small{{font-size:12px;opacity:.72}}.hero h1{{font-size:22px;margin:6px 0 18px}}.current-label{{font-size:13px;opacity:.72}}.price{{font-size:34px;font-weight:900;direction:ltr;text-align:right}}.date{{font-size:12px;opacity:.68;margin-top:6px}}.summary,.help,.warning,details{{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px}}.summary h2,.help h2,.warning h2{{font-size:18px;margin:0 0 10px}}.summary p,.help p,.warning p{{font-size:13px;margin:7px 0}}.direction{{background:#f1f1f1;border-radius:12px;padding:11px;margin-top:10px;font-weight:700}}.help{{background:#fff8df}}.card{{background:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0000000a}}.period{{font-size:19px;font-weight:900}}.main-label{{font-size:13px;color:#777;margin-top:10px}}.main-price{{font-size:28px;font-weight:900}}.change{{font-size:13px;color:#555;margin:5px 0 16px}}.three{{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}}.scenario{{background:#f5f5f5;border-radius:13px;padding:10px 5px;text-align:center}}.scenario.main{{background:#e8f1eb}}.scenario span{{display:block;font-size:11px;color:#666}}.scenario strong{{display:block;font-size:12px;margin-top:5px}}.scenario em{{display:block;font-size:10px;color:#777;font-style:normal;margin-top:5px}}.plain-explain{{margin-top:15px;background:#f7f7f7;padding:12px;border-radius:12px;font-size:13px}}.chart-title{{font-size:16px;font-weight:900;margin-top:20px;margin-bottom:8px}}.chart-wrap{{width:100%;overflow:hidden;border:1px solid #ededed;border-radius:15px;background:#fff}}.scenario-svg{{width:100%;height:auto;display:block}}
+*{{box-sizing:border-box}}body{{margin:0;background:#f3f3f3;color:#171717;font-family:Tahoma,Arial,sans-serif;line-height:1.8}}.wrap{{max-width:780px;margin:auto;padding:14px}}.hero{{background:#111;color:#fff;border-radius:22px;padding:22px;margin-bottom:14px}}.hero .small{{font-size:12px;opacity:.72}}.hero h1{{font-size:22px;margin:6px 0 18px}}.current-label{{font-size:13px;opacity:.72}}.price{{font-size:34px;font-weight:900;direction:ltr;text-align:right}}.date{{font-size:12px;opacity:.68;margin-top:6px}}.live-box{{margin-top:12px;padding:10px 12px;background:#1c1c1c;border:1px solid #ffffff22;border-radius:12px;font-size:11px;line-height:1.95;color:#e8e8e8}}.live-box b{{color:#fff}}.live-box span{{opacity:.75}}.live-box.muted{{opacity:.8}}.summary,.help,.warning,details{{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px}}.summary h2,.help h2,.warning h2{{font-size:18px;margin:0 0 10px}}.summary p,.help p,.warning p{{font-size:13px;margin:7px 0}}.direction{{background:#f1f1f1;border-radius:12px;padding:11px;margin-top:10px;font-weight:700}}.help{{background:#fff8df}}.card{{background:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0000000a}}.period{{font-size:19px;font-weight:900}}.main-label{{font-size:13px;color:#777;margin-top:10px}}.main-price{{font-size:28px;font-weight:900}}.change{{font-size:13px;color:#555;margin:5px 0 16px}}.three{{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}}.scenario{{background:#f5f5f5;border-radius:13px;padding:10px 5px;text-align:center}}.scenario.main{{background:#e8f1eb}}.scenario span{{display:block;font-size:11px;color:#666}}.scenario strong{{display:block;font-size:12px;margin-top:5px}}.scenario em{{display:block;font-size:10px;color:#777;font-style:normal;margin-top:5px}}.plain-explain{{margin-top:15px;background:#f7f7f7;padding:12px;border-radius:12px;font-size:13px}}.chart-title{{font-size:16px;font-weight:900;margin-top:20px;margin-bottom:8px}}.chart-wrap{{width:100%;overflow:hidden;border:1px solid #ededed;border-radius:15px;background:#fff}}.scenario-svg{{width:100%;height:auto;display:block}}
 .phase-labels{{
   display:grid;
   grid-template-columns:66% 34%;
@@ -225,7 +258,7 @@ html = f'''<!doctype html>
 }}
 .chart-help{{margin-top:10px;background:#f4f7fa;border-radius:12px;padding:12px;font-size:12px}}.chart-warning{{margin-top:8px;background:#fff8df;border-radius:12px;padding:11px;font-size:11px;color:#555}}.important{{background:#f2f2f2;border-radius:12px;padding:11px;font-weight:700}}details{{font-size:12px}}summary{{font-weight:800;cursor:pointer}}.footer{{font-size:10px;color:#888;text-align:center;padding:22px 5px}}@media(max-width:430px){{.price{{font-size:29px}}.three{{gap:5px}}.scenario strong{{font-size:10px}}}}
 </style></head><body><div class="wrap">
-<header class="hero"><div class="small">پیش‌بینی آماری قیمت طلای ۱۸ عیار</div><h1>وضعیت احتمالی قیمت طلا در ماه‌های آینده</h1><div class="current-label">قیمت فعلی مورد استفاده مدل</div><div class="price">{fmt_toman(current)}</div><div class="date">آخرین روز داده‌ای که مدل دیده است: {fa_num(data_date)} میلادی | {fa_num(jalali_date)} شمسی</div></header>
+<header class="hero"><div class="small">پیش‌بینی آماری قیمت طلای ۱۸ عیار</div><h1>وضعیت احتمالی قیمت طلا در ماه‌های آینده</h1><div class="current-label">{current_label}</div><div class="price">{fmt_toman(current)}</div><div class="date">{data_label}: {fa_num(data_date)} میلادی | {fa_num(jalali_date)} شمسی</div>{live_box}</header>
 <section class="summary"><h2>خلاصه خیلی ساده</h2><p>این برنامه قیمت طلای ۱۸ عیار، دلار و طلای جهانی را بررسی می‌کند و با استفاده از رفتار گذشته بازار، قیمت احتمالی آینده را برآورد می‌کند.</p><div class="direction">در هر سه بازه زمانی، پیش‌بینی اصلی فعلی مدل بالاتر از قیمت امروز است.</div><p>عدد <b>«پیش‌بینی اصلی»</b> مهم‌ترین عدد مدل برای پایان آن بازه زمانی است.</p></section>
 <section class="help"><h2>این سه عدد یعنی چه؟</h2><p><b>برآورد پایین:</b> اگر بازار ضعیف‌تر از انتظار مدل حرکت کند.</p><p><b>پیش‌بینی اصلی:</b> عدد مرکزی و مهم‌ترین پیش‌بینی مدل.</p><p><b>برآورد بالا:</b> اگر بازار قوی‌تر از انتظار مدل حرکت کند.</p><p>این اعداد تضمین نمی‌کنند که قیمت حتماً بین برآورد پایین و بالا بماند.</p></section>
 {''.join(cards)}

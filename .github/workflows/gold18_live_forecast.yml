@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 30
     env:
       GOLD4CAST_DATA: market_data.csv
+      GOLD4CAST_LIVE_SNAPSHOT: live_snapshot.csv
+      GOLD4CAST_REQUIRE_LIVE: '1'
 
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +38,18 @@ jobs:
             exit 1
           fi
           curl --fail --location --silent --show-error             "$GOLD4CAST_DATA_URL"             --output "$GOLD4CAST_DATA"
+
+      - name: Obtain user-authorized live snapshot
+        env:
+          GOLD4CAST_LIVE_SNAPSHOT_URL: ${{ secrets.GOLD4CAST_LIVE_SNAPSHOT_URL }}
+        run: |
+          if [ -z "$GOLD4CAST_LIVE_SNAPSHOT_URL" ]; then
+            echo "Set repository secret GOLD4CAST_LIVE_SNAPSHOT_URL to a lawful normalized live-snapshot CSV."
+            echo "Required columns: date,gold18_toman,usd_irr,xau_usd"
+            echo "Optional columns: gold_quote_time,usd_quote_time,xau_quote_time"
+            exit 1
+          fi
+          curl --fail --location --silent --show-error             "$GOLD4CAST_LIVE_SNAPSHOT_URL"             --output "$GOLD4CAST_LIVE_SNAPSHOT"
 
       - name: Forecast
         env:

@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use Gold4Cast in research, please cite this software."
 title: "Gold4Cast"
 type: software
-version: 1.0.0
+version: 1.0.3
 authors:
   - name: "Gold4Cast Contributors"
 license: Apache-2.0
